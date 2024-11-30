@@ -1,8 +1,11 @@
 const mongoose = require("mongoose");
 const { countConnect } = require("../helpers/checkConnect");
+const {
+  db: { host, port, name },
+} = require("../configs/config.mongodb");
 
-const connectString = "mongodb://localhost:27017/express-app";
-
+const connectString = `mongodb://${host}:${port}/${name}`;
+console.log(connectString);
 class Database {
   constructor() {
     this.connect();
