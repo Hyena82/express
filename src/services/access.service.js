@@ -2,7 +2,7 @@ const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const shopModel = require("../models/shop.model");
 const KeyTokenService = require("./keyToken");
-const createTokenPair = require("../auth/authUtils");
+const { createTokenPair } = require("../auth/authUtils");
 const { getIntoData } = require("../utils");
 const {
   BadRequestError,
@@ -18,6 +18,11 @@ const ROLESHOP = {
 };
 
 class AccessService {
+  static logout = async (keyStore) => {
+    const delKey = await KeyTokenService.removeKeyById(keyStore.user);
+    return delKey;
+  };
+
   static login = async ({ email, password, refreshToken = null }) => {
     const foundShop = await findByEmail({ email });
     if (!foundShop) {
@@ -31,6 +36,7 @@ class AccessService {
     const privateKey = crypto.randomBytes(64).toString("hex");
     const publicKey = crypto.randomBytes(64).toString("hex");
     const { _id: userId } = foundShop;
+
     const tokens = await createTokenPair(
       { userId, email },
       publicKey,
@@ -45,14 +51,14 @@ class AccessService {
     });
 
     return {
-      shop: getIntoData(["name", "email"], foundShop),
+      shop: getIntoData(["_id", "name", "email"], foundShop),
       tokens,
     };
   };
 
   static signUp = async ({ name, email, password }) => {
     try {
-      const holderShop = await shopModel.findOne({ email }).lean();
+      const holderShop = await shopModel.fidOne({ email }).lean();
       if (holderShop) {
         throw new BadRequestError("Error: Shop already registered!");
       }

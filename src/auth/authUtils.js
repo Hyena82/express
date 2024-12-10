@@ -1,4 +1,13 @@
 const JWT = require("jsonwebtoken");
+const { asyncHandler } = require("../helpers/asyncHandler");
+const { AuthorizationError, NotFoundError } = require("../core/error.response");
+const KeyTokenService = require("../services/keyToken");
+
+const HEADER = {
+  API_KEY: "x-api-key",
+  AUTHORIZATION: "authorization",
+  CLIENT_ID: "x-client-id",
+};
 
 const createTokenPair = async (payload, publicKey, privateKey) => {
   try {
@@ -22,4 +31,38 @@ const createTokenPair = async (payload, publicKey, privateKey) => {
   } catch (error) {}
 };
 
-module.exports = createTokenPair;
+const authentication = asyncHandler(async (req, res, next) => {
+  const userId = req.headers[HEADER.CLIENT_ID];
+
+  if (!userId) {
+    throw new AuthorizationError("Unauthorized");
+  }
+
+  const keyStore = await KeyTokenService.findByUserId(userId);
+  if (!keyStore) {
+    throw new NotFoundError("KeyStore not found");
+  }
+
+  const accessToken = req.headers[HEADER.AUTHORIZATION];
+
+  if (!accessToken) {
+    throw new AuthorizationError("Unauthorized");
+  }
+
+  try {
+    const decodeUser = await JWT.verify(accessToken, keyStore.publicKey);
+    if (userId !== decodeUser.userId) {
+      throw new AuthorizationError("Unauthorized");
+    }
+
+    req.keyStore = keyStore;
+    return next();
+  } catch (e) {
+    throw new AuthorizationError("Unauthorized");
+  }
+});
+
+module.exports = {
+  authentication,
+  createTokenPair,
+};
